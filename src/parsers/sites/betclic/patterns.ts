@@ -6,7 +6,11 @@ export const BETCLIC = {
   /** Exactly a run of dashes on its own line. The sample uses 12. */
   HAND_SEPARATOR: /^-{6,}$/m,
 
-  SECTION: /^\*\*\* ([A-Z][A-Z\- ]*) \*\*\*(?:\s*\[([^\]]*)\])?\s*$/,
+  /** "*** FLOP *** [..]" (cash/tournament) or "* FLOP * [..]" (Spin & Go). */
+  SECTION: /^\*{1,3} ([A-Z][A-Z\- ]*) \*{1,3}(?:\s*\[([^\]]*)\])?\s*$/,
+
+  /** Start of a hand, in either asterisk style. */
+  HEADER_MARKER: /^\*{1,3} HEADER \*{1,3}\s*$/m,
 
   HEADER_FIELD: /^([A-Za-z&' ]+):\s*(.*)$/,
 

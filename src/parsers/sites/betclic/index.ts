@@ -120,17 +120,19 @@ export const betclicParser: SiteParser = {
     if (/^Site:\s*Betclic/im.test(head)) {
       return { confidence: 0.99, reason: 'Site: Betclic header field' };
     }
-    if (/\*\*\* HEADER \*\*\*/.test(head) && /^Hand ID:/im.test(head)) {
+    if (BETCLIC.HEADER_MARKER.test(head) && /^Hand ID:/im.test(head)) {
       return { confidence: 0.45, reason: 'Betclic-style HEADER/Hand ID layout' };
     }
     return { confidence: 0, reason: 'no Betclic markers' };
   },
 
   splitHands(text: string): readonly string[] {
+    // Spin & Go exports may omit the dash separator, so also cut at each HEADER.
     return text
       .split(BETCLIC.HAND_SEPARATOR)
+      .flatMap((c) => c.split(/^(?=\*{1,3} HEADER \*{1,3}\s*$)/m))
       .map((c) => c.trim())
-      .filter((c) => c.length > 0 && c.includes('*** HEADER ***'));
+      .filter((c) => c.length > 0 && BETCLIC.HEADER_MARKER.test(c));
   },
 
   parseHand(source: string, ctx: ParseContext): ParseResult<Hand> {
@@ -142,7 +144,7 @@ export const betclicParser: SiteParser = {
     warnings.push(...sections.unknown);
 
     if (sections.header.length === 0) {
-      return { ok: false, errors: [fail(WarningCode.MISSING_HEADER, 'No *** HEADER *** section')] };
+      return { ok: false, errors: [fail(WarningCode.MISSING_HEADER, 'No HEADER section')] };
     }
 
     const fields = parseHeaderFields(sections.header);
@@ -161,10 +163,11 @@ export const betclicParser: SiteParser = {
     }
 
     // Sit & Go is checked first: its header also contains the word "tournament"
-    // on some Betclic exports, so the broader test would swallow it.
+    // on some Betclic exports, so the broader test would swallow it. "Spin" is
+    // the lottery-style SNG (Spin & Rush / Spin & Go).
     const gameModeRaw = fields.get('game mode') ?? '';
     const gameMode: GameMode =
-      /sit\s*&?\s*go|sng/i.test(gameModeRaw) ? 'sit-n-go'
+      /sit\s*&?\s*go|sng|spin/i.test(gameModeRaw) ? 'sit-n-go'
       : /tournament/i.test(gameModeRaw) ? 'tournament'
       : 'cash';
     if (gameModeRaw.trim() === '') {

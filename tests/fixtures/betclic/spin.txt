@@ -1,0 +1,32 @@
+* HEADER *
+Site: Betclic.fr
+Game Mode: Spin
+Game Type: NL Texas Hold'em
+Game Name: Spin & Rush 5€
+Game ID: 01M45PHMF3566X9MRCG16DVTBF
+Prize pool: 15.00€
+Multiplier: x3
+Buy In: 5.00€
+Hand ID: 01M45PQ68VKFNTQQT5SHPT56J4
+Date & Time: 2026-10-05 09:36:03 (UTC)
+Table ID: 01M45PHMFF1W2RCBRCKS3J95C3
+Blinds: 20/40
+Total Pot: 159
+Rake: 0
+* PLAYERS *
+Seat 1: jobiwin (405) [BB]
+Seat 2: SIMBAROI (976) [BTN Hero]
+Seat 3: totopat (119) [SB]
+* HOLE CARDS *
+SIMBAROI: [6c 7h]
+* PRE-FLOP *
+09:36:03 - totopat: Posts SB 20
+09:36:03 - jobiwin: Posts BB 40
+09:36:05 - SIMBAROI: Folds
+09:36:05 - totopat: Calls 20
+09:36:07 - jobiwin: Checks
+* FLOP * [2c 4d Jc]
+09:36:11 - totopat: Bets 79 and is all-in
+09:36:17 - jobiwin: Folds
+* SUMMARY *
+totopat wins main pot of 159
