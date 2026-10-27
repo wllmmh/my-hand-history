@@ -35,8 +35,8 @@ export const FORCED: ReadonlySet<ActionKind> = new Set<ActionKind>([
 const ACTION_LABELS: Record<ActionKind, { readonly long: string; readonly short: string }> = {
   'post-ante': { long: 'ante', short: 'ante' },
   // Position already says which blind it is, so the log just reads "post".
-  'post-sb': { long: 'post', short: 'sb' },
-  'post-bb': { long: 'post', short: 'bb' },
+  'post-sb': { long: 'post', short: 'post' },
+  'post-bb': { long: 'post', short: 'post' },
   'post-dead': { long: 'dead blind', short: 'dead' },
   straddle: { long: 'straddle', short: 'straddle' },
   fold: { long: 'fold', short: 'fold' },

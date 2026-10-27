@@ -6,6 +6,7 @@ import { heroNetResult } from '@/domain/stacks';
 import { formatUnit, formatSignedUnit, formatDateTime } from '@/lib/format';
 import { useDisplayStore } from '@/state/display-store';
 import { CardView } from '@/components/replay/CardView';
+import { PositionBadge } from '@/components/replay/PositionBadge';
 import { ScrollArea } from '@/components/ui/ScrollArea';
 import { HandListSkeleton } from './HandListSkeleton';
 import { registry } from '@/parsers/index';
@@ -60,9 +61,7 @@ export function HandSummary({ hand: h, unit, timezone }: SummaryProps) {
         </div>
         <div className="flex flex-col items-start gap-0.5 leading-tight min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-            <span className="w-9 shrink-0 text-center t-chip border border-slate-600 rounded-sm bg-slate-700 px-1 py-0.5 text-slate-100">
-              {hero?.position}
-            </span>
+            <PositionBadge position={hero?.position} isHero />
             <span className="text-sm font-medium text-slate-200 truncate">{hero?.name}</span>
           </div>
           <span className="text-sm text-slate-500 truncate max-w-full">
