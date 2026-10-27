@@ -43,52 +43,115 @@ export function useFeltMaxWidth(
 
 export type Point = { readonly x: number; readonly y: number };
 
-/** Distance from a chip stack's centre to the seat card's edge. */
-const CARD_CLEARANCE = 18;
-/** Distance from a chip stack's centre to the oval's edge, inward. */
-const OVAL_INSET = 20;
+/** Gap between a seat's marker and its own card. */
+const CARD_CLEARANCE = 6;
+/** The least gap between a marker and the oval's edge. */
+const MIN_RAIL_GAP = 6;
+/**
+ * Half the marker's box: the w-9 position badge over the h-5 action row
+ * (badge 1.2rem-ish with padding and border, a 2px gap, then 20px). The chips
+ * and a long action label spill inward from it, away from the rail, so only
+ * this box decides how close the marker comes to the edge.
+ */
+const MARKER_HALF_W = 18;
+const MARKER_HALF_H = 21;
 
-/** Inside the stadium `oval`, shrunk by `inset` on every side. */
-function inStadium(p: Point, oval: DOMRect, inset: number): boolean {
-  const w = oval.width;
-  const h = oval.height;
-  // The rounded ends are on the short axis: left/right for a wide oval,
-  // top/bottom for a tall one.
-  const r = Math.min(w, h) / 2;
-  const cx = w >= h ? Math.min(Math.max(p.x, oval.left + r), oval.right - r) : oval.left + r;
-  const cy = w >= h ? oval.top + r : Math.min(Math.max(p.y, oval.top + r), oval.bottom - r);
-  return Math.hypot(p.x - cx, p.y - cy) <= r - inset;
+/**
+ * The stadium's spine — the segment its edge is a constant `r` from — and that
+ * radius. The rounded ends are on the short axis: left/right for a wide oval,
+ * top/bottom for a tall one.
+ */
+function spine(oval: DOMRect) {
+  const r = Math.min(oval.width, oval.height) / 2;
+  return oval.width >= oval.height
+    ? { r, a: { x: oval.left + r, y: oval.top + r }, b: { x: oval.right - r, y: oval.top + r } }
+    : { r, a: { x: oval.left + r, y: oval.top + r }, b: { x: oval.left + r, y: oval.bottom - r } };
 }
 
-function clearOf(p: Point, card: DOMRect, gap: number): boolean {
-  return p.x < card.left - gap || p.x > card.right + gap || p.y < card.top - gap || p.y > card.bottom + gap;
+type Spine = ReturnType<typeof spine>;
+
+function nearestOnSpine(p: Point, { a, b }: Spine): Point {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 === 0 ? 0 : Math.min(Math.max(((p.x - a.x) * dx + (p.y - a.y) * dy) / len2, 0), 1);
+  return { x: a.x + dx * t, y: a.y + dy * t };
+}
+
+/** How far inside the oval's edge `p` is (negative outside). */
+function inset(p: Point, s: Spine): number {
+  const q = nearestOnSpine(p, s);
+  return s.r - Math.hypot(p.x - q.x, p.y - q.y);
+}
+
+/** The marker box's distance from the edge: that of its corner nearest the rail. */
+function markerGap(c: Point, s: Spine): number {
+  return Math.min(
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sy) => inset({ x: c.x + sx * MARKER_HALF_W, y: c.y + sy * MARKER_HALF_H }, s))),
+  );
+}
+
+function clearOf(c: Point, card: DOMRect): boolean {
+  return (
+    c.x + MARKER_HALF_W <= card.left - CARD_CLEARANCE
+    || c.x - MARKER_HALF_W >= card.right + CARD_CLEARANCE
+    || c.y + MARKER_HALF_H <= card.top - CARD_CLEARANCE
+    || c.y - MARKER_HALF_H >= card.bottom + CARD_CLEARANCE
+  );
 }
 
 /**
- * Where a seat's bet sits, as an offset from the centre of its card.
+ * Where each seat's marker — position badge, action label and bet chips —
+ * sits, as an offset from the centre of its card, keyed by seat number.
  *
- * Walked out from the card's centre towards the middle of the felt until the
- * spot is both clear of the card and inside the oval. A fixed "just inside the
- * card" slot is fine for seats on the oval's straight edges, but a seat in a
- * corner of the ring sits beyond the oval's rounded end, and a slot beside it
- * lands on the rail — worst at 9–10 handed, where the side columns hold more
- * seats and the outer ones sit further from the curve.
+ * Every marker lies on the line from its card's centre straight in to the
+ * oval's spine, i.e. along the edge's inward normal, so it faces its seat
+ * whether the seat is on a straight side or round the curve of an end (the
+ * outer seats of a 9–10 handed ring sit beyond the curve, not on it).
  *
- * Returns null if no point on the way satisfies both (a felt too small to have
- * one), so the caller can fall back to the fixed slot.
+ * All markers sit the SAME distance from the edge. Each seat first finds the
+ * least gap that clears its own card — which differs by side, since a side
+ * seat reaches in by half its width and a top/bottom seat by half its height,
+ * and both scale with the viewport — and every marker then takes the largest
+ * of those, re-measured whenever the ring resizes.
+ *
+ * Empty if any seat has no such spot (a felt too small to hold one), so the
+ * caller falls back to the fixed slots for all seats rather than mixing them.
  */
-export function betSpot(card: DOMRect, oval: DOMRect): Point | null {
-  const from = { x: card.left + card.width / 2, y: card.top + card.height / 2 };
-  const to = { x: oval.left + oval.width / 2, y: oval.top + oval.height / 2 };
-  const len = Math.hypot(to.x - from.x, to.y - from.y);
-  if (len < 1) return null;
-  const ux = (to.x - from.x) / len;
-  const uy = (to.y - from.y) / len;
-  for (let t = 0; t <= len; t += 2) {
-    const p = { x: from.x + ux * t, y: from.y + uy * t };
-    if (clearOf(p, card, CARD_CLEARANCE) && inStadium(p, oval, OVAL_INSET)) {
-      return { x: p.x - from.x, y: p.y - from.y };
+export function markerSpots(cards: ReadonlyMap<number, DOMRect>, oval: DOMRect): ReadonlyMap<number, Point> {
+  const s = spine(oval);
+
+  /** The shallowest point on the ray that passes `ok`, or null if none does before the spine. */
+  const walk = (at: (depth: number) => Point, ok: (c: Point) => boolean) => {
+    for (let depth = 0; depth <= s.r; depth += 1) {
+      const c = at(depth);
+      if (ok(c)) return c;
     }
+    return null;
+  };
+
+  const rays: { seat: number; from: Point; at: (depth: number) => Point }[] = [];
+  let gap = MIN_RAIL_GAP;
+  for (const [seat, card] of cards) {
+    const from = { x: card.left + card.width / 2, y: card.top + card.height / 2 };
+    const q = nearestOnSpine(from, s);
+    const d = Math.hypot(from.x - q.x, from.y - q.y);
+    // A card centred on the spine has no inward direction to walk.
+    if (d < 1) return new Map();
+    const n = { x: (from.x - q.x) / d, y: (from.y - q.y) / d };
+    // `depth` px in from the edge, along the normal.
+    const at = (depth: number) => ({ x: q.x + n.x * (s.r - depth), y: q.y + n.y * (s.r - depth) });
+    const needed = walk(at, (c) => clearOf(c, card) && markerGap(c, s) >= MIN_RAIL_GAP);
+    if (!needed) return new Map();
+    gap = Math.max(gap, markerGap(needed, s));
+    rays.push({ seat, from, at });
   }
-  return null;
+
+  const spots = new Map<number, Point>();
+  for (const { seat, from, at } of rays) {
+    const c = walk(at, (p) => markerGap(p, s) >= gap);
+    if (!c) return new Map();
+    spots.set(seat, { x: c.x - from.x, y: c.y - from.y });
+  }
+  return spots;
 }

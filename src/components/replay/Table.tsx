@@ -14,7 +14,7 @@ import { CommunityCards } from './CommunityCards';
 import { ChipStack } from './ChipStack';
 import { Seat, EmptySeat, type ChipGhost, type GhostKind, type SeatSide, type Vector } from './Seat';
 import { TableSkeleton } from './TableSkeleton';
-import { betSpot, useFeltMaxWidth, type Point } from './felt';
+import { markerSpots, useFeltMaxWidth, type Point } from './felt';
 import { ScrollArea } from '@/components/ui/ScrollArea';
 
 /** One seat's chips crossing the felt on this step. */
@@ -296,12 +296,13 @@ function TableImpl({ hand, actionIndex, board, awarding, antes, revealed, showin
   }, [ring.bottom, ring.top]);
   const feltMaxWidth = useFeltMaxWidth(gridRef, seatProbe, seatH);
 
-  // Bet spots are placed from the rendered geometry — each seat card and the
-  // oval — so they stay on the felt at any width and any number of seats.
+  // Seat markers (badge, action label, bet chips) are placed from the rendered
+  // geometry — each seat card and the oval — so they stay on the felt, the
+  // same distance in from its edge, at any width and any number of seats.
   // Re-measured whenever the ring resizes; the chip animations measure their
   // own paths from wherever the stacks end up.
   const ovalRef = useRef<HTMLDivElement | null>(null);
-  const [betSpots, setBetSpots] = useState<ReadonlyMap<number, Point>>(() => new Map());
+  const [spots, setSpots] = useState<ReadonlyMap<number, Point>>(() => new Map());
   useLayoutEffect(() => {
     const grid = gridRef.current;
     if (!grid) return;
@@ -309,12 +310,15 @@ function TableImpl({ hand, actionIndex, board, awarding, antes, revealed, showin
       const oval = ovalRef.current?.getBoundingClientRect();
       const next = new Map<number, Point>();
       if (oval) {
+        const cards = new Map<number, DOMRect>();
         for (const el of grid.querySelectorAll<HTMLElement>('[data-seat]')) {
-          const spot = betSpot(el.getBoundingClientRect(), oval);
-          if (spot) next.set(Number(el.dataset.seat), { x: Math.round(spot.x), y: Math.round(spot.y) });
+          cards.set(Number(el.dataset.seat), el.getBoundingClientRect());
+        }
+        for (const [seat, spot] of markerSpots(cards, oval)) {
+          next.set(seat, { x: Math.round(spot.x), y: Math.round(spot.y) });
         }
       }
-      setBetSpots((prev) => {
+      setSpots((prev) => {
         if (prev.size === next.size && [...next].every(([k, v]) => prev.get(k)?.x === v.x && prev.get(k)?.y === v.y)) return prev;
         return next;
       });
@@ -348,7 +352,7 @@ function TableImpl({ hand, actionIndex, board, awarding, antes, revealed, showin
         holeCards={holeCardsOf(seat)}
         lastAction={won > 0 ? 'win' : last ? shortActionLabel(last.kind) : null}
         side={side}
-        betAt={betSpots.get(seat.seat) ?? null}
+        markerAt={spots.get(seat.seat) ?? null}
         bet={bets.get(seat.seat) ?? 0}
         animateBet={betMoved && actingSeat === seat.seat}
         ghosts={ghosts}
@@ -431,8 +435,9 @@ function TableImpl({ hand, actionIndex, board, awarding, antes, revealed, showin
                 : EMPTY_RING.left.map((k) => <EmptySeat key={k} />)}
             </div>
 
-            {/* Padding leaves room for the bet stacks of the seats around the board. */}
-            <div className="relative z-10 col-start-2 row-start-2 flex items-center justify-center px-4 py-[clamp(1.5rem,6.2vh,5.5rem)]">
+            {/* Padding leaves room for the markers (badge, action, bet chips) of
+                the seats around the board. */}
+            <div className="relative z-10 col-start-2 row-start-2 flex items-center justify-center px-4 py-[clamp(4rem,7vh,5.5rem)]">
               <div className="flex min-w-0 flex-col items-center">
                 <div className="relative mb-1 flex items-baseline justify-center gap-1.5 text-center">
                   {/* Fixed-size and absolutely placed so the label never shifts

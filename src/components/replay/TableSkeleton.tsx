@@ -82,8 +82,8 @@ export function TableSkeleton() {
         </div>
 
         {/* Same padding as Table's board cell — it reserves the room the
-            surrounding seats' bet stacks need. */}
-        <div className="relative z-10 col-start-2 row-start-2 flex items-center justify-center px-4 py-[clamp(1.5rem,6.2vh,5.5rem)]">
+            surrounding seats' markers need. */}
+        <div className="relative z-10 col-start-2 row-start-2 flex items-center justify-center px-4 py-[clamp(4rem,7vh,5.5rem)]">
           <div className="flex min-w-0 flex-col items-center animate-pulse">
             {/* Matches the pot row: no gap on the column, mb-1 on the row. */}
             <div className="relative mb-1 flex items-baseline justify-center gap-1.5 text-center">
